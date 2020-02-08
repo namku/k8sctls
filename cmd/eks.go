@@ -65,7 +65,7 @@ var eksCmd = &cobra.Command{
 		os.Setenv("AWS_SECRET_ACCESS_KEY", crd.Credentials.SessionToken)
 
 		// create context configuration eks cluster
-		awsContext := exec.Command("aws", "eks", "--region", "eu-central-1", "update-kubeconfig", "--name", "koble-stg-eks", "--profile", "nexus")
+		awsContext := exec.Command("aws", "eks", "--region", region, "update-kubeconfig", "--name", clusterName, "--profile", pf)
 		err = awsContext.Run()
 		if err != nil {
 			log.Fatal(err)
