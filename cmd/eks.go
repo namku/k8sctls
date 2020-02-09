@@ -3,7 +3,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -51,15 +50,15 @@ var eksCmd = &cobra.Command{
 		t, _ := cmd.Flags().GetString("token-code")
 		p, _ := cmd.Flags().GetString("profile")
 
-		fmt.Println("aws sts get-session-token --serial-number " + sn + " --token-code " + t + " --profile " + p)
-		secretAccessKey, err := exec.Command("aws", "sts", "get-session-token", "--serial-number", sn, "--token-code", t, "--profile", p).Output()
+		// fmt.Println("aws sts get-session-token --serial-number " + sn + " --token-code " + t + " --profile " + p)
+		sessionToken_, err := exec.Command("aws", "sts", "get-session-token", "--serial-number", sn, "--token-code", t, "--profile", p).Output()
 		if err != nil {
 			log.Fatal("command failed ", err)
 		}
 
 		// read output json format
 		var crd Identification
-		json.Unmarshal([]byte(secretAccessKey), &crd)
+		json.Unmarshal([]byte(sessionToken_), &crd)
 
 		// set environment vars
 		os.Setenv("AWS_SECRET_ACCESS_KEY", crd.Credentials.SecretAccessKey)
