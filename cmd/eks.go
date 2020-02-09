@@ -17,7 +17,6 @@ func init() {
 	eksCmd.PersistentFlags().StringP("region", "r", "eu-central-1", "cluster region")
 	eksCmd.PersistentFlags().StringP("cluster-name", "n", "", "cluster name")
 	eksCmd.MarkPersistentFlagRequired("cluster-name")
-	eksCmd.PersistentFlags().String("duration-seconds", "86400", "time in seconds until reset credentials")
 	eksCmd.PersistentFlags().StringP("serial-number", "s", "", "arn user name")
 	eksCmd.MarkPersistentFlagRequired("serial-number")
 	eksCmd.PersistentFlags().StringP("token-code", "t", "", "two factor authentication code")
@@ -48,13 +47,12 @@ var eksCmd = &cobra.Command{
 		// get flags values
 		n, _ := cmd.Flags().GetString("cluster-name")
 		r, _ := cmd.Flags().GetString("region")
-		ds, _ := cmd.Flags().GetString("duration-seconds")
 		sn, _ := cmd.Flags().GetString("serial-number")
 		t, _ := cmd.Flags().GetString("token-code")
 		p, _ := cmd.Flags().GetString("profile")
 
-		fmt.Println("aws sts get-session-token --duration-seconds " + ds + " --serial-number " + sn + " --token-code " + t + " --profile " + p)
-		secretAccessKey, err := exec.Command("aws", "sts", "get-session-token", "--duration-seconds", ds, "--serial-number", sn, "--token-code", t, "--profile", p).Output()
+		fmt.Println("aws sts get-session-token --serial-number " + sn + " --token-code " + t + " --profile " + p)
+		secretAccessKey, err := exec.Command("aws", "sts", "get-session-token", "--serial-number", sn, "--token-code", t, "--profile", p).Output()
 		if err != nil {
 			log.Fatal("command failed ", err)
 		}
