@@ -3,15 +3,17 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func init() {
-	rootCmd.AddCommand(eksCmd)
+	cobra.OnInitialize(initConfig)
 
 	eksCmd.PersistentFlags().StringP("region", "r", "eu-central-1", "cluster region")
 	eksCmd.PersistentFlags().StringP("cluster-name", "n", "", "cluster name")
@@ -21,7 +23,37 @@ func init() {
 	eksCmd.PersistentFlags().StringP("token-code", "t", "", "two factor authentication code")
 	eksCmd.MarkPersistentFlagRequired("token-code")
 	eksCmd.PersistentFlags().StringP("profile", "p", "", "account profile")
-	eksCmd.MarkPersistentFlagRequired("profile")
+	viper.BindPFlag("profile", eksCmd.PersistentFlags().Lookup("profile"))
+	// eksCmd.MarkPersistentFlagRequired("profile")
+
+	rootCmd.AddCommand(eksCmd)
+}
+
+func initConfig() {
+	println("In initConfig")
+	cfgFile := ".config.yml"
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	} //else {
+	// 	// Find home directory.
+	// 	home, err := homedir.Dir()
+	// 	if err != nil {
+	// 		er(err)
+	// 	}
+
+	// 	// Search config in home directory with name ".cobra" (without extension).
+	// 	viper.AddConfigPath(home)
+	// 	viper.SetConfigName(".cobra")
+	// }
+
+	viper.AutomaticEnv()
+
+	if err := viper.ReadInConfig(); err == nil {
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	} else {
+		fmt.Printf("Error reading config file: %v\n", err)
+	}
 }
 
 // struct credentials
@@ -49,9 +81,12 @@ var eksCmd = &cobra.Command{
 		sn, _ := cmd.Flags().GetString("serial-number")
 		t, _ := cmd.Flags().GetString("token-code")
 		p, _ := cmd.Flags().GetString("profile")
+		if p == "" {
+			p = viper.GetString("profile")
+		}
 
-		// fmt.Println("aws sts get-session-token --serial-number " + sn + " --token-code " + t + " --profile " + p)
 		sessionToken_, err := exec.Command("aws", "sts", "get-session-token", "--serial-number", sn, "--token-code", t, "--profile", p).Output()
+
 		if err != nil {
 			log.Fatal("command failed ", err)
 		}
