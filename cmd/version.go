@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
 func init() {
 	rootCmd.AddCommand(versionCmd)
 }
@@ -15,6 +16,6 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version number of k8sctls",
 	Long:  `All software has versions. This is Hugo's`,
 	Run: func(cmd *cobra.Command, args []string) {
-	  fmt.Println("K8sctls Get Credentials k8s v0.1 -- HEAD")
+		fmt.Println("K8sctls Get Credentials k8s v0.2 -- HEAD")
 	},
 }
