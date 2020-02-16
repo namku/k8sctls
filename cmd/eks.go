@@ -17,21 +17,21 @@ func init() {
 
 	eksCmd.PersistentFlags().StringP("region", "r", "eu-central-1", "cluster region")
 	eksCmd.PersistentFlags().StringP("cluster-name", "n", "", "cluster name")
-	eksCmd.MarkPersistentFlagRequired("cluster-name")
 	eksCmd.PersistentFlags().StringP("serial-number", "s", "", "arn user name")
-	eksCmd.MarkPersistentFlagRequired("serial-number")
 	eksCmd.PersistentFlags().StringP("token-code", "t", "", "two factor authentication code")
 	eksCmd.MarkPersistentFlagRequired("token-code")
 	eksCmd.PersistentFlags().StringP("profile", "p", "", "account profile")
+	viper.BindPFlag("region", eksCmd.PersistentFlags().Lookup("region"))
+	viper.BindPFlag("cluster-name", eksCmd.PersistentFlags().Lookup("cluster-name"))
+	viper.BindPFlag("serial-number", eksCmd.PersistentFlags().Lookup("serial-number"))
 	viper.BindPFlag("profile", eksCmd.PersistentFlags().Lookup("profile"))
-	// eksCmd.MarkPersistentFlagRequired("profile")
 
 	rootCmd.AddCommand(eksCmd)
 }
 
 func initConfig() {
 	println("In initConfig")
-	cfgFile := ".config.yml"
+	cfgFile := ".config.json"
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
@@ -56,6 +56,12 @@ func initConfig() {
 	}
 }
 
+type cluster struct {
+	Region       string
+	Serialnumber string
+	Profile      string
+}
+
 // struct credentials
 type Credentials struct {
 	AcessKeyId      string
@@ -75,17 +81,31 @@ var eksCmd = &cobra.Command{
 	Long:  `Import configuration of eks cluster in .kube/config file.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// get flags values
-		n, _ := cmd.Flags().GetString("cluster-name")
-		r, _ := cmd.Flags().GetString("region")
-		sn, _ := cmd.Flags().GetString("serial-number")
-		t, _ := cmd.Flags().GetString("token-code")
-		p, _ := cmd.Flags().GetString("profile")
-		if p == "" {
-			p = viper.GetString("profile")
+		var n string
+
+		// get flags or config file values, flag take precedence over config file.
+		if viper.IsSet("cluster-name") {
+			n = viper.GetString("cluster-name")
+		} else {
+			log.Fatalln("Error setting cluster-name flag")
 		}
 
-		sessionToken_, err := exec.Command("aws", "sts", "get-session-token", "--serial-number", sn, "--token-code", t, "--profile", p).Output()
+		t, _ := cmd.Flags().GetString("token-code")
+
+		clusterTree := viper.Sub(n)
+		var c cluster
+		err := clusterTree.Unmarshal(&c)
+		if err != nil {
+			log.Fatalf("Unable to decode into struct, %v", err)
+		}
+
+		// debug
+		fmt.Println(n)
+		fmt.Println(c.Serialnumber)
+		fmt.Println(c.Profile)
+		fmt.Println(c.Region)
+
+		sessionToken_, err := exec.Command("aws", "sts", "get-session-token", "--serial-number", c.Serialnumber, "--token-code", t, "--profile", c.Profile).Output()
 
 		if err != nil {
 			log.Fatal("command failed ", err)
@@ -100,7 +120,7 @@ var eksCmd = &cobra.Command{
 		os.Setenv("AWS_SECRET_ACCESS_KEY", crd.Credentials.SessionToken)
 
 		// create context configuration eks cluster
-		awsContext := exec.Command("aws", "eks", "--region", r, "update-kubeconfig", "--name", n, "--profile", p)
+		awsContext := exec.Command("aws", "eks", "--region", c.Region, "update-kubeconfig", "--name", n, "--profile", c.Profile)
 		err = awsContext.Run()
 		if err != nil {
 			log.Fatalf("ERROR: problem creating new context %v", err)
