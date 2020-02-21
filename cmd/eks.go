@@ -72,7 +72,7 @@ type Identification struct {
 
 var eksCmd = &cobra.Command{
 	Use:   "eks",
-	Short: "Configure credentials of eks cluster",
+	Short: "Configure eks credentials",
 	Long:  `Import configuration of eks cluster in .kube/config file.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// get flags or config file values, flag take precedence over config file.
