@@ -89,11 +89,16 @@ var eksCmd = &cobra.Command{
 
 		t, _ := cmd.Flags().GetString("token-code")
 
-		clusterTree := viper.Sub(n)
 		var C cluster
-		err := clusterTree.Unmarshal(&C)
-		if err != nil {
-			log.Fatalf("Unable to decode into struct, %v", err)
+		clusterTree := viper.Sub(n)
+		// check if cluster is not configured
+		if clusterTree != nil {
+			err := clusterTree.Unmarshal(&C)
+			if err != nil {
+				log.Fatalf("Unable to decode into struct, %v", err)
+			}
+		} else {
+			log.Println("WARNING: cluster name don't configured in config.json")
 		}
 
 		if s != "" {
@@ -101,6 +106,7 @@ var eksCmd = &cobra.Command{
 		} else if C.Serialnumber != "" {
 			s = C.Serialnumber
 		} else {
+			// cmd.Help().Error()
 			log.Fatalln("ERROR: serial-number is not set")
 		}
 
