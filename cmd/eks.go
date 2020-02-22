@@ -37,7 +37,7 @@ func initConfig() {
 		log.Fatalln(err)
 	}
 
-	// Search config in home directory with name ".cobra" (without extension).
+	// Search config in ~/.k8sctls directory with name "config.json".
 	viper.AddConfigPath(home + "/.k8sctls")
 	viper.SetConfigType("json")
 	viper.SetConfigName("config")
