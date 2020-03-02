@@ -51,6 +51,16 @@ func initConfig() {
 	}
 }
 
+func logError(err error, msg string, cmd *cobra.Command) {
+	if err != nil {
+		log.Fatalf("%s: %s", msg, err)
+	} else {
+		cmd.Help()
+		fmt.Println()
+		log.Fatalf("%s", msg)
+	}
+}
+
 type cluster struct {
 	Region       string
 	Serialnumber string
@@ -106,8 +116,8 @@ var eksCmd = &cobra.Command{
 		} else if C.Serialnumber != "" {
 			s = C.Serialnumber
 		} else {
-			// cmd.Help().Error()
-			log.Fatalln("ERROR: serial-number is not set")
+			logError(nil, "ERROR: serial-number is not set", cmd)
+			// log.Fatalln("ERROR: serial-number is not set")
 		}
 
 		if r != "" {
@@ -115,7 +125,8 @@ var eksCmd = &cobra.Command{
 		} else if C.Region != "" {
 			r = C.Region
 		} else {
-			log.Fatalln("ERROR: region is not set")
+			logError(nil, "ERROR: region is not set", cmd)
+			// log.Fatalln("ERROR: region is not set")
 		}
 
 		if p != "" {
@@ -123,7 +134,8 @@ var eksCmd = &cobra.Command{
 		} else if C.Profile != "" {
 			p = C.Profile
 		} else {
-			log.Fatalln("ERROR: profile is not set")
+			logError(nil, "ERROR: profile is not set", cmd)
+			// log.Fatalln("ERROR: profile is not set")
 		}
 
 		sessionToken_, err := exec.Command("aws", "sts", "get-session-token", "--serial-number", s, "--token-code", t, "--profile", p).Output()
