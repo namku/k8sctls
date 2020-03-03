@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/mitchellh/colorstring"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -45,19 +46,26 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	} else {
-		fmt.Printf("Error reading config file: %v\n", err)
+		configFile := "Using config file:" + viper.ConfigFileUsed()
+		logError("Info", configFile, nil)
 	}
+	//  else {
+	// fmt.Printf("Error reading config file: %v\n", err)
+	// }
 }
 
-func logError(err error, msg string, cmd *cobra.Command) {
-	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
-	} else {
-		cmd.Help()
+func logError(severity string, msg string, cmd *cobra.Command) {
+	switch severity {
+	case "Error":
+		colorstring.Println("\n[bold][red]Error: [reset]" + msg)
 		fmt.Println()
-		log.Fatalf("%s", msg)
+		cmd.Help()
+		os.Exit(1)
+	case "Warning":
+		colorstring.Println("\n[bold][yellow]" + msg + "[reset]")
+		fmt.Println()
+	case "Info":
+		colorstring.Println("\n[bold][green]" + msg + "[reset]")
 	}
 }
 
@@ -107,17 +115,17 @@ var eksCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("Unable to decode into struct, %v", err)
 			}
-		} else {
-			log.Println("WARNING: cluster name don't configured in config.json")
 		}
+		//  else {
+		// logError("Warning", "Cluster's name don't configured in config.json", cmd)
+		// }
 
 		if s != "" {
 			s = viper.GetString("serial-number")
 		} else if C.Serialnumber != "" {
 			s = C.Serialnumber
 		} else {
-			logError(nil, "ERROR: serial-number is not set", cmd)
-			// log.Fatalln("ERROR: serial-number is not set")
+			logError("Error", "required flag(s) \"serial-number\" not set.", cmd)
 		}
 
 		if r != "" {
@@ -125,8 +133,7 @@ var eksCmd = &cobra.Command{
 		} else if C.Region != "" {
 			r = C.Region
 		} else {
-			logError(nil, "ERROR: region is not set", cmd)
-			// log.Fatalln("ERROR: region is not set")
+			logError("Error", "region is not set", cmd)
 		}
 
 		if p != "" {
@@ -134,8 +141,7 @@ var eksCmd = &cobra.Command{
 		} else if C.Profile != "" {
 			p = C.Profile
 		} else {
-			logError(nil, "ERROR: profile is not set", cmd)
-			// log.Fatalln("ERROR: profile is not set")
+			logError("Error", "profile is not set", cmd)
 		}
 
 		sessionToken_, err := exec.Command("aws", "sts", "get-session-token", "--serial-number", s, "--token-code", t, "--profile", p).Output()
@@ -156,7 +162,7 @@ var eksCmd = &cobra.Command{
 		awsContext := exec.Command("aws", "eks", "--region", r, "update-kubeconfig", "--name", n, "--profile", p)
 		err = awsContext.Run()
 		if err != nil {
-			log.Fatalf("ERROR: problem creating new context (aws eks --region "+r+" update-kubeconfig --name "+n+" --profile "+p+")%v", err)
+			log.Fatalf("Error: problem creating new context (aws eks --region "+r+" update-kubeconfig --name "+n+" --profile "+p+")%v", err)
 		}
 	},
 }
