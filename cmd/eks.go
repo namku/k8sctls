@@ -20,8 +20,7 @@ func init() {
 	eksCmd.PersistentFlags().StringP("region", "r", "", "cluster region")
 	eksCmd.PersistentFlags().StringP("cluster-name", "n", "", "cluster name")
 	eksCmd.PersistentFlags().StringP("serial-number", "s", "", "arn user name")
-	eksCmd.PersistentFlags().StringP("token-code", "t", "", "two factor authentication code")
-	eksCmd.MarkPersistentFlagRequired("token-code")
+	eksCmd.PersistentFlags().StringP("token-code", "t", "", "two factor authentication code (MFA)")
 	eksCmd.PersistentFlags().StringP("profile", "p", "", "account profile")
 	viper.BindPFlag("region", eksCmd.PersistentFlags().Lookup("region"))
 	viper.BindPFlag("cluster-name", eksCmd.PersistentFlags().Lookup("cluster-name"))
@@ -46,12 +45,9 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err == nil {
-		configFile := "Using config file:" + viper.ConfigFileUsed()
+		configFile := "Config file found [ " + viper.ConfigFileUsed() + " ]"
 		logError("Info", configFile, nil)
 	}
-	//  else {
-	// fmt.Printf("Error reading config file: %v\n", err)
-	// }
 }
 
 func logError(severity string, msg string, cmd *cobra.Command) {
@@ -60,9 +56,10 @@ func logError(severity string, msg string, cmd *cobra.Command) {
 		colorstring.Println("\n[bold][red]Error: [reset]" + msg)
 		fmt.Println()
 		cmd.Help()
+		fmt.Println()
 		os.Exit(1)
 	case "Warning":
-		colorstring.Println("\n[bold][yellow]" + msg + "[reset]")
+		colorstring.Println("\n[bold][yellow]Warning: [reset]" + msg)
 		fmt.Println()
 	case "Info":
 		colorstring.Println("\n[bold][green]" + msg + "[reset]")
@@ -102,23 +99,24 @@ var eksCmd = &cobra.Command{
 		if n != "" {
 			n = viper.GetString("cluster-name")
 		} else {
-			log.Fatalln("Error setting cluster-name flag")
+			logError("Error", "required flag(s) \"cluster-name\" not set.", cmd)
 		}
 
 		t, _ := cmd.Flags().GetString("token-code")
 
 		var C cluster
 		clusterTree := viper.Sub(n)
-		// check if cluster is not configured
+		// check if cluster is not configured in the config.json
 		if clusterTree != nil {
 			err := clusterTree.Unmarshal(&C)
 			if err != nil {
 				log.Fatalf("Unable to decode into struct, %v", err)
 			}
+		} else {
+			if err := viper.ReadInConfig(); err == nil {
+				logError("Warning", "Cluster ["+n+"] not found in "+viper.ConfigFileUsed(), cmd)
+			}
 		}
-		//  else {
-		// logError("Warning", "Cluster's name don't configured in config.json", cmd)
-		// }
 
 		if s != "" {
 			s = viper.GetString("serial-number")
@@ -133,7 +131,7 @@ var eksCmd = &cobra.Command{
 		} else if C.Region != "" {
 			r = C.Region
 		} else {
-			logError("Error", "region is not set", cmd)
+			logError("Error", "required flag(s) \"region\" not set.", cmd)
 		}
 
 		if p != "" {
@@ -141,13 +139,13 @@ var eksCmd = &cobra.Command{
 		} else if C.Profile != "" {
 			p = C.Profile
 		} else {
-			logError("Error", "profile is not set", cmd)
+			logError("Error", "required flag(s) \"profile\" not set.", cmd)
 		}
 
 		sessionToken_, err := exec.Command("aws", "sts", "get-session-token", "--serial-number", s, "--token-code", t, "--profile", p).Output()
 
 		if err != nil {
-			log.Fatal("command failed (aws sts get-session-token --serial-number " + s + " --token-code " + t + " --profile " + p + ")\n")
+			logError("Error", "problem getting session token, maybe MFA was wrong", cmd)
 		}
 
 		// read output json format
@@ -162,7 +160,7 @@ var eksCmd = &cobra.Command{
 		awsContext := exec.Command("aws", "eks", "--region", r, "update-kubeconfig", "--name", n, "--profile", p)
 		err = awsContext.Run()
 		if err != nil {
-			log.Fatalf("Error: problem creating new context (aws eks --region "+r+" update-kubeconfig --name "+n+" --profile "+p+")%v", err)
+			logError("Error", "problem creating new context, somthing was wrong", cmd)
 		}
 	},
 }
