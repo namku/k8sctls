@@ -3,13 +3,12 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
 
-	"github.com/mitchellh/colorstring"
 	"github.com/mitchellh/go-homedir"
+	"github.com/namku/k8sctls/cmd/dialog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -46,23 +45,7 @@ func initConfig() {
 
 	if err := viper.ReadInConfig(); err == nil {
 		configFile := "Config file found [ " + viper.ConfigFileUsed() + " ]"
-		logError("Info", configFile, nil)
-	}
-}
-
-func logError(severity string, msg string, cmd *cobra.Command) {
-	switch severity {
-	case "Error":
-		colorstring.Println("\n[bold][red]Error: [reset]" + msg)
-		fmt.Println()
-		cmd.Help()
-		fmt.Println()
-		os.Exit(1)
-	case "Warning":
-		colorstring.Println("\n[bold][yellow]Warning: [reset]" + msg)
-		fmt.Println()
-	case "Info":
-		colorstring.Println("\n[bold][green]" + msg + "[reset]")
+		dialog.Log("Info", configFile, nil)
 	}
 }
 
@@ -95,35 +78,36 @@ var eksCmd = &cobra.Command{
 		s, _ := cmd.Flags().GetString("serial-number")
 		r, _ := cmd.Flags().GetString("region")
 		p, _ := cmd.Flags().GetString("profile")
+		t, _ := cmd.Flags().GetString("token-code")
 
 		if n != "" {
 			n = viper.GetString("cluster-name")
 		} else {
-			logError("Error", "required flag(s) \"cluster-name\" not set.", cmd)
+			dialog.Log("Error", "required flag(s) \"cluster-name\" not set.", cmd)
 		}
 
-		t, _ := cmd.Flags().GetString("token-code")
-
+		// Read config.json file
 		var C cluster
 		clusterTree := viper.Sub(n)
-		// check if cluster is not configured in the config.json
 		if clusterTree != nil {
 			err := clusterTree.Unmarshal(&C)
 			if err != nil {
 				log.Fatalf("Unable to decode into struct, %v", err)
 			}
 		} else {
+			// check if cluster is not configured in the config.json
 			if err := viper.ReadInConfig(); err == nil {
-				logError("Warning", "Cluster ["+n+"] not found in "+viper.ConfigFileUsed(), cmd)
+				dialog.Log("Warning", "Cluster ["+n+"] not found in "+viper.ConfigFileUsed(), cmd)
 			}
 		}
 
+		// check inputs values in flags or config file, priority, first flag then config file.
 		if s != "" {
 			s = viper.GetString("serial-number")
 		} else if C.Serialnumber != "" {
 			s = C.Serialnumber
 		} else {
-			logError("Error", "required flag(s) \"serial-number\" not set.", cmd)
+			dialog.Log("Error", "required flag(s) \"serial-number\" not set.", cmd)
 		}
 
 		if r != "" {
@@ -131,7 +115,7 @@ var eksCmd = &cobra.Command{
 		} else if C.Region != "" {
 			r = C.Region
 		} else {
-			logError("Error", "required flag(s) \"region\" not set.", cmd)
+			dialog.Log("Error", "required flag(s) \"region\" not set.", cmd)
 		}
 
 		if p != "" {
@@ -139,13 +123,13 @@ var eksCmd = &cobra.Command{
 		} else if C.Profile != "" {
 			p = C.Profile
 		} else {
-			logError("Error", "required flag(s) \"profile\" not set.", cmd)
+			dialog.Log("Error", "required flag(s) \"profile\" not set.", cmd)
 		}
 
 		sessionToken_, err := exec.Command("aws", "sts", "get-session-token", "--serial-number", s, "--token-code", t, "--profile", p).Output()
 
 		if err != nil {
-			logError("Error", "problem getting session token, maybe MFA was wrong", cmd)
+			dialog.Log("Error", "problem getting session token, maybe MFA was wrong", cmd)
 		}
 
 		// read output json format
@@ -160,7 +144,7 @@ var eksCmd = &cobra.Command{
 		awsContext := exec.Command("aws", "eks", "--region", r, "update-kubeconfig", "--name", n, "--profile", p)
 		err = awsContext.Run()
 		if err != nil {
-			logError("Error", "problem creating new context, somthing was wrong", cmd)
+			dialog.Log("Error", "problem creating new context, somthing was wrong", cmd)
 		}
 	},
 }
