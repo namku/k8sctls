@@ -138,7 +138,7 @@ var eksCmd = &cobra.Command{
 
 		// set environment vars
 		os.Setenv("AWS_SECRET_ACCESS_KEY", crd.Credentials.SecretAccessKey)
-		os.Setenv("AWS_SECRET_ACCESS_KEY", crd.Credentials.SessionToken)
+		os.Setenv("AWS_SESSION_TOKEN", crd.Credentials.SessionToken)
 
 		// create context configuration eks cluster
 		awsContext := exec.Command("aws", "eks", "--region", r, "update-kubeconfig", "--name", n, "--profile", p)
